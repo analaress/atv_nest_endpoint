@@ -1,20 +1,32 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 
 export class CreateCafeDto {
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   id: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   nome: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   tipo: string;
 
-    quantidade?: number;
+  @IsOptional()
+  @IsNumber()
+  quantidade?: number;
+
+  @IsOptional()
+  @IsNumber()
   preco?: number;
+
+  @IsOptional()
+  @IsString()
   descricao?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   tags?: string[];
 }
