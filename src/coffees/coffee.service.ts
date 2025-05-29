@@ -9,6 +9,7 @@ export interface Coffee {
     id: string;             
     descricao?: string;
     tags?: string[];
+    data?: string;
   }
 
 @Injectable()
@@ -21,7 +22,8 @@ export class CoffeeService {
           quantidade: 100,
           preco: 4.5,
           descricao: 'Café forte e concentrado.',
-          tags: ['forte', 'sem açúcar']
+          tags: ['forte', 'sem açúcar'],
+          data: "2025-05-26"
         },
         {
           id: '2',
@@ -30,7 +32,9 @@ export class CoffeeService {
           quantidade: 50,
           preco: 6.0,
           descricao: 'Mistura suave de café com leite vaporizado.',
-          tags: ['suave', 'com leite']
+          tags: ['suave', 'com leite'],
+          data: "2025-05-22"
+
         },
         {
           id: '3',
@@ -39,7 +43,8 @@ export class CoffeeService {
           quantidade: 30,
           preco: 7.5,
           descricao: 'Bebida refrescante de café com gelo.',
-          tags: ['gelado', 'refrescante']
+          tags: ['gelado', 'refrescante'],
+          data: "2025-05-28"
         }
       ];
     
@@ -64,6 +69,21 @@ export class CoffeeService {
 
         this.coffees.push(createCoffeeDto);
         return createCoffeeDto;
+    }
+
+    getCoffeesData(start_date: string, end_date: string){
+
+      if (end_date < start_date) {
+        throw new ConflictException('A data fim deve ser menor que a data início.')
+      }
+      
+      const filtroDatas = this.coffees.filter((coffees) => coffees.data >= start_date &&
+      coffees.data <= end_date )
+
+      console.log(start_date)
+      console.log(end_date)
+
+      return filtroDatas
     }
     
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
 import { Coffee, CoffeeService } from './coffee.service';
 import { CreateCafeDto } from './dto/create-cafe.dto';
 
@@ -21,6 +21,14 @@ export class CoffeeController {
     getCoffeeUnico(@Param('id') id: string) {
     return this.CoffeeService.getCoffeeUnico(id)
   }
+
+    @Get('/coffees/detalhes')
+    getCoffeesData(
+      @Query('start_date') start_date: string,
+      @Query('end_date') end_date: string) {
+    return this.CoffeeService.getCoffeesData(start_date, end_date)
+  }
 }
+
 
   
