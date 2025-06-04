@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id       Int     @id @default(autoincrement())
+  nome     String
+  email    String  @unique
+  cpf      String  @unique
+  telefone String
+
+  pedidos  Pedido[]
+}
+
+model Coffee {
+  id            Int           @id @default(autoincrement())
+  nome          String
+  tipo          String        
+  precoUnitario Float
+  descricao     String?
+  tags          String[]      
+  criadoEm      DateTime      @default(now())
+
+  itensPedido   ItemPedido[]
+}
+
+model Pedido {
+  id          Int           @id @default(autoincrement())
+  cliente     Cliente       @relation(fields: [clienteId], references: [id])
+  clienteId   Int
+  data        DateTime      @default(now())
+  total       Float
+  entrega     Entrega?
+  itens       ItemPedido[]
+}
+
+model Entrega {
+  id                  Int      @id @default(autoincrement())
+  endereco            String
+  status              EntregaStatus @default(PENDENTE)
+  dataPrevista        DateTime
+
+  pedido              Pedido   @relation(fields: [pedidoId], references: [id])
+  pedidoId            Int      @unique
+}
+
+model ItemPedido {
+  id             Int      @id @default(autoincrement())
+  coffee         Coffee   @relation(fields: [coffeeId], references: [id])
+  coffeeId       Int
+
+  pedido         Pedido   @relation(fields: [pedidoId], references: [id])
+  pedidoId       Int
+
+  quantidade     Int
+  precoUnitario  Float
+
+  @@unique([coffeeId, pedidoId])
+}
+
+enum EntregaStatus {
+  PENDENTE
+  EM_TRANSITO
+  ENTREGUE
+}
