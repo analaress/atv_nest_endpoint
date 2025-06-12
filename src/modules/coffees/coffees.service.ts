@@ -1,90 +1,126 @@
-import { NotFoundException, Injectable, ConflictException } from '@nestjs/common';
-import { CreateCafeDto } from './dto/create-cafe.dto';
-
-export interface Coffee {
-    nome: string;           
-    tipo: string;           
-    quantidade?: number;
-    preco?: number;
-    id: string;             
-    descricao?: string;
-    tags?: string[];
-    data?: string;
-  }
+import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CoffeeService {
-    private coffees: Coffee[] = [
-        {
-          id: '1',
-          nome: 'Café Expresso',
-          tipo: 'Preto',
-          quantidade: 100,
-          preco: 4.5,
-          descricao: 'Café forte e concentrado.',
-          tags: ['forte', 'sem açúcar'],
-          data: "2025-05-26"
+  constructor(private prisma: PrismaService) {}
+
+  async findAll() {
+    try {
+      return await this.prisma.coffee.findMany({
+        select: { id: true, nome: true, tags: true },
+      });
+    } catch (error) {
+      throw new HttpException('Erro ao buscar cafés', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async create(data: any) {
+    const { nome, tipo, preco, descricao, tags } = data;
+
+    if (!nome || !tipo || preco === undefined) {
+      throw new BadRequestException('Campos nome, tipo e preco são obrigatórios.');
+    }
+
+    try {
+      return await this.prisma.coffee.create({
+        data: {
+          nome,
+          tipo,
+          precoUnitario: preco,
+          descricao,
+          tags,
         },
-        {
-          id: '2',
-          nome: 'Café Latte',
-          tipo: 'Com leite',
-          quantidade: 50,
-          preco: 6.0,
-          descricao: 'Mistura suave de café com leite vaporizado.',
-          tags: ['suave', 'com leite'],
-          data: "2025-05-22"
+      });
+    } catch (error) {
+      throw new HttpException('Erro ao criar café', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 
+  async findPedidosByCafeId(coffeeId: number) {
+    try {
+      const pedidos = await this.prisma.itemPedido.findMany({
+        where: { coffeeId },
+        select: {
+          quantidade: true,
+          pedido: {
+            select: {
+              id: true,
+              data: true,
+              cliente: {
+                select: {
+                  nome: true,
+                  email: true,
+                },
+              },
+            },
+          },
         },
-        {
-          id: '3',
-          nome: 'Café Gelado',
-          tipo: 'Gelado',
-          quantidade: 30,
-          preco: 7.5,
-          descricao: 'Bebida refrescante de café com gelo.',
-          tags: ['gelado', 'refrescante'],
-          data: "2025-05-28"
-        }
-      ];
-    
-    getCoffees(): Coffee[] {
-        return this.coffees;
-    }
+      });
 
-    getCoffeeUnico(id: string): Coffee | undefined {
-        const coffee = this.coffees.find((coffee) => coffee.id === id)
-        if (!coffee) {
-            throw new NotFoundException(`Café com ID ${id} não encontrado.`);
-        }
-
-        return coffee;
-    }
-
-    createCoffee(createCoffeeDto: CreateCafeDto) {
-        const existeCoffee = this.coffees.find((c) => c.nome== createCoffeeDto.nome)
-        if(existeCoffee) {
-          throw new ConflictException('Coffee já existe.')
-        }
-
-        this.coffees.push(createCoffeeDto);
-        return createCoffeeDto;
-    }
-
-    getCoffeesData(start_date: string, end_date: string){
-
-      if (end_date < start_date) {
-        throw new ConflictException('A data fim deve ser menor que a data início.')
+      if (pedidos.length === 0) {
+        throw new NotFoundException(`Nenhum pedido encontrado para o café ID ${coffeeId}`);
       }
-      
-      const filtroDatas = this.coffees.filter((coffees) => coffees.data >= start_date &&
-      coffees.data <= end_date )
 
-      console.log(start_date)
-      console.log(end_date)
-
-      return filtroDatas
+      return pedidos.map(pedido => ({
+        pedidoId: pedido.pedido.id,
+        data: pedido.pedido.data,
+        cliente: pedido.pedido.cliente,
+        quantidade: pedido.quantidade,
+      }));
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new HttpException('Erro ao buscar pedidos do café', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    
+  }
 
+  async findMaisVendidos() {
+    try {
+      const agregados = await this.prisma.itemPedido.groupBy({
+        by: ['coffeeId'],
+        _sum: { quantidade: true },
+        orderBy: { _sum: { quantidade: 'desc' } },
+        take: 3,
+      });
+
+      if (agregados.length === 0) {
+        throw new NotFoundException('Nenhum café vendido encontrado');
+      }
+
+      const cafesIds = agregados.map(a => a.coffeeId);
+
+      const cafes = await this.prisma.coffee.findMany({
+        where: { id: { in: cafesIds } },
+        select: { id: true, nome: true, tags: true },
+      });
+
+      return agregados.map(agr => {
+        const cafe = cafes.find(c => c.id === agr.coffeeId);
+        return {
+          id: cafe.id,
+          nome: cafe.nome,
+          tags: cafe.tags,
+          totalVendido: agr._sum.quantidade,
+        };
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new HttpException('Erro ao buscar cafés mais vendidos', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async remove(id: number) {
+    try {
+      const cafe = await this.prisma.coffee.findUnique({ where: { id } });
+
+      if (!cafe) {
+        throw new NotFoundException(`Café com ID ${id} não encontrado.`);
+      }
+
+      return await this.prisma.coffee.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new HttpException('Erro ao deletar o café', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

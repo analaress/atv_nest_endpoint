@@ -1,34 +1,37 @@
-import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
-import { Coffee, CoffeeService } from './coffees.service';
-import { CreateCafeDto } from './dto/create-cafe.dto';
+import { Controller, Get, Post, Delete, Param, Query, Body } from '@nestjs/common';
+import { CoffeeService } from './coffees.service';
 
 
 @Controller()
 export class CoffeeController {
-    constructor(private readonly CoffeeService: CoffeeService ) {}
+  constructor(private readonly CoffeeService: CoffeeService) { }
 
-    @Post('/coffee-create')
-    createCoffee(@Body() createCoffeeDto : CreateCafeDto) {
-    return this.CoffeeService.createCoffee(createCoffeeDto);
+
+  @Get('/coffees')
+  async getCoffees() {
+    return this.CoffeeService.findAll();
   }
 
-    @Get('/coffees')
-    getCoffees(): Coffee[] {
-    return this.CoffeeService.getCoffees();
+  @Post('/coffees')
+  create(@Body() data: any) {
+    return this.CoffeeService.create(data);
   }
 
-    @Get('/coffees/:id/detalhes')
-    getCoffeeUnico(@Param('id') id: string) {
-    return this.CoffeeService.getCoffeeUnico(id)
+  @Get('/coffees/:id/order')
+  findPedidosByCafeId(@Param('id') id: number) {
+    return this.CoffeeService.findPedidosByCafeId(Number(id));
   }
 
-    @Get('/coffees/detalhes')
-    getCoffeesData(
-      @Query('start_date') start_date: string,
-      @Query('end_date') end_date: string) {
-    return this.CoffeeService.getCoffeesData(start_date, end_date)
+  @Get('/coffees/plus-order-coffee')
+  findMaisVendidos() {
+    return this.CoffeeService.findMaisVendidos();
   }
+
+  @Delete('/coffees/:id')
+  remove(@Param('id') id: number) {
+    return this.CoffeeService.remove(Number(id));
+  }
+
 }
 
 
-  
